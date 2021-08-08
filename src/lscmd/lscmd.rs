@@ -1,18 +1,16 @@
 use curl::easy::Easy;
 use serde::Deserialize;
 use std::io::{stdout, Write};
+use tokio::sync::mpsc::Sender;
 
 #[derive(Deserialize, Debug)]
 pub struct Service {
-    id: i64,
-    name: String,
-    r#type: i64,
+    pub id: i64,
+    pub name: String,
+    pub r#type: i64,
 }
 
-pub fn lscmd<F: FnMut(Vec<Service>) -> () + Send + 'static>(
-    url: &str,
-    mut f: F,
-) -> std::result::Result<(), curl::Error> {
+pub fn lscmd(url: &str, tx: Sender<Vec<Service>>) -> std::result::Result<(), curl::Error> {
     let mut easy = Easy::new();
     easy.url(url)?;
     easy.write_function(move |data| {
@@ -21,7 +19,7 @@ pub fn lscmd<F: FnMut(Vec<Service>) -> () + Send + 'static>(
         match a {
             Ok(a) => {
                 let b: Vec<_> = a.into_iter().filter(|v| v.r#type == 192).collect();
-                f(b);
+                tx.send(b);
                 Ok(data.len())
             }
             Err(e) => {
