@@ -1,7 +1,7 @@
-use curl::easy::Easy;
+use curl::easy::Easy2;
 use serde::Deserialize;
 use std::io::{stdout, Write};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::oneshot::Sender;
 
 #[derive(Deserialize, Debug)]
 pub struct Service {
@@ -9,27 +9,37 @@ pub struct Service {
     pub name: String,
     pub r#type: i64,
 }
+use curl::easy::{Handler, WriteError};
+
+struct Collector(Vec<u8>);
+
+impl Handler for Collector {
+    fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
+        self.0.extend_from_slice(data);
+        Ok(data.len())
+    }
+}
 
 pub fn lscmd(url: &str, tx: Sender<Vec<Service>>) -> std::result::Result<(), curl::Error> {
-    let mut easy = Easy::new();
+    let mut easy = Easy2::new(Collector(Vec::new()));
+    easy.get(true)?;
     easy.url(url)?;
-    easy.write_function(move |data| {
-        let s = &*String::from_utf8_lossy(data);
-        let a: serde_json::error::Result<Vec<Service>> = serde_json::from_str(s);
-        match a {
-            Ok(a) => {
-                let b: Vec<_> = a.into_iter().filter(|v| v.r#type == 192).collect();
-                tx.send(b);
-                Ok(data.len())
-            }
-            Err(e) => {
-                stdout().write_all(data).unwrap();
-                println!();
-                panic!("{}", e);
-            }
-        }
-    })?;
     easy.perform()?;
+
+    let data = &easy.get_ref().0;
+    let s = &*String::from_utf8_lossy(data);
+    let a: serde_json::error::Result<Vec<Service>> = serde_json::from_str(s);
+    match a {
+        Ok(a) => {
+            let result: Vec<_> = a.into_iter().filter(|v| v.r#type == 192).collect();
+            tx.send(result).unwrap();
+        }
+        Err(e) => {
+            stdout().write_all(data).unwrap();
+            println!();
+            panic!("{}", e);
+        }
+    }
     Ok(())
 }
 
