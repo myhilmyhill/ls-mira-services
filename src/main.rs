@@ -13,13 +13,13 @@ async fn handle(
 ) -> std::result::Result<hyper::Response<Body>, hyper::http::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Vec<Service>>();
     tokio::spawn(async move {
-        let lsurl = env::var("LS_MIRA_SERCIVES_LSURL").unwrap();
+        let lsurl = env::var("LS_MIRA_SERVICES_LSURL").unwrap();
         lscmd(&lsurl, tx).unwrap();
     });
     let services = rx.await.unwrap();
 
-    let lsurl = env::var("LS_MIRA_SERCIVES_LSURL").unwrap();
-    let suffix = env::var("LS_MIRA_SERCIVES_SUFFIX").unwrap();
+    let lsurl = env::var("LS_MIRA_SERVICES_LSURL").unwrap();
+    let suffix = env::var("LS_MIRA_SERVICES_SUFFIX").unwrap();
     let ls = services
         .into_iter()
         .map(|s| (s.name, format!("{}/{}{}", &lsurl, s.id, &suffix)))
@@ -41,7 +41,7 @@ async fn handle(
 
 #[tokio::main]
 async fn main() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(handle)) });
     let server = Server::bind(&addr).serve(make_svc);
 

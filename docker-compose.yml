@@ -1,0 +1,10 @@
+version: "3.7"
+
+services:
+  ls-mira-services:
+    build: .
+    environment:
+      LS_MIRA_SERVICES_LSURL: "http://192.168.0.200:40772/api/services"
+      LS_MIRA_SERVICES_SUFFIX: "/stream?decode=1"
+    ports:
+      - 3000:3000
