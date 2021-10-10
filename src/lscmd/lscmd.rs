@@ -31,7 +31,7 @@ pub fn lscmd(url: &str, tx: Sender<Vec<Service>>) -> std::result::Result<(), cur
     let a: serde_json::error::Result<Vec<Service>> = serde_json::from_str(s);
     match a {
         Ok(a) => {
-            let result: Vec<_> = a.into_iter().filter(|v| v.r#type == 192).collect();
+            let result: Vec<_> = a;
             tx.send(result).unwrap();
         }
         Err(e) => {
